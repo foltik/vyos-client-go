@@ -128,6 +128,15 @@ func (svc *ConfigService) Set(path string, value string) error {
 	return err
 }
 
+func (svc *ConfigService) SetTree(path string, value map[string]interface{}) error {
+    _, err := svc.client.Request("configure", map[string]interface{}{
+        "op": "set",
+        "path": strings.Split(path, " "),
+        "value": value,
+    })
+    return err
+}
+
 // Deletes the configuration tree/value at the specified path
 func (svc *ConfigService) Delete(path string) error {
 	_, err := svc.client.Request("configure", map[string]interface{}{
