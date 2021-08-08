@@ -3,6 +3,7 @@ package client
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -44,7 +45,7 @@ type response struct {
 }
 
 // Posts a raw request with `payload` to `endpoint`.
-func (c *Client) Request(endpoint string, payload map[string]interface{}) (interface{}, error) {
+func (c *Client) Request(endpoint string, payload interface{}) (interface{}, error) {
 	data, err := json.Marshal(payload)
 	if err != nil {
 		return nil, errors.New("Failed to marshal request payload.")
@@ -128,20 +129,69 @@ func (svc *ConfigService) Set(path string, value string) error {
 	return err
 }
 
-func (svc *ConfigService) SetTree(path string, value map[string]interface{}) error {
-    _, err := svc.client.Request("configure", map[string]interface{}{
-        "op": "set",
-        "path": strings.Split(path, " "),
-        "value": value,
-    })
-    return err
+func _Flatten(data *map[string]string, path string, tree map[string]interface{}) error {
+	for k, v := range tree {
+		subpath := path
+		if len(subpath) > 0 {
+			subpath += " "
+		}
+		subpath += k
+
+		subval, ok := v.(string)
+		subtree, tok := v.(map[string]interface{})
+
+		if ok {
+			(*data)[subpath] = subval
+		} else if tok {
+			err := _Flatten(data, subpath, subtree)
+			if err != nil {
+				return err
+			}
+		} else {
+			return fmt.Errorf("%s: Invalid type", subpath)
+		}
+	}
+
+	return nil
 }
 
-// Deletes the configuration tree/value at the specified path
-func (svc *ConfigService) Delete(path string) error {
-	_, err := svc.client.Request("configure", map[string]interface{}{
-		"op":   "delete",
-		"path": strings.Split(path, " "),
-	})
+// Flatten a multi level object into a flat list of keys and values
+func Flatten(tree map[string]interface{}) (map[string]string, error) {
+	res := map[string]string{}
+	err := _Flatten(&res, "", tree)
+	return res, err
+}
+
+// Sets all of the configuration keys and values in an object
+func (svc *ConfigService) SetTree(tree map[string]interface{}) error {
+	flat, err := Flatten(tree)
+	if err != nil {
+		return err
+	}
+
+	data := []map[string]interface{}{}
+	for path, value := range flat {
+		data = append(data, map[string]interface{}{
+			"op":    "set",
+			"path":  strings.Split(path, " "),
+			"value": value,
+		})
+	}
+
+	_, err = svc.client.Request("configure", data)
+	return err
+}
+
+// Deletes the configuration tree/values at the specified paths
+func (svc *ConfigService) Delete(paths ...string) error {
+	data := []map[string]interface{}{}
+	for _, path := range paths {
+		data = append(data, map[string]interface{}{
+			"op":   "delete",
+			"path": strings.Split(path, " "),
+		})
+	}
+
+	_, err := svc.client.Request("configure", data)
 	return err
 }
