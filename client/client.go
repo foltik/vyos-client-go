@@ -55,12 +55,14 @@ func (c *Client) Request(endpoint string, payload interface{}) (interface{}, err
 		return nil, errors.New("Failed to marshal request payload.")
 	}
 
+	c.mutex.Lock()
 	resp, err := c.resty.R().
 		SetFormData(map[string]string{
 			"key":  c.key,
 			"data": string(data),
 		}).
 		Post(c.url + "/" + endpoint)
+    c.mutex.Unlock()
 	if err != nil {
 		return nil, err
 	}
@@ -125,14 +127,11 @@ func (svc *ConfigService) Show(path string) (*string, error) {
 
 // Sets a configuration value at the specified path
 func (svc *ConfigService) Set(path string, value string) error {
-	svc.client.mutex.Lock()
 	_, err := svc.client.Request("configure", map[string]interface{}{
 		"op":    "set",
 		"path":  strings.Split(path, " "),
 		"value": value,
 	})
-	svc.client.mutex.Unlock()
-
 	return err
 }
 
@@ -185,10 +184,7 @@ func (svc *ConfigService) SetTree(tree map[string]interface{}) error {
 		})
 	}
 
-	svc.client.mutex.Lock()
 	_, err = svc.client.Request("configure", data)
-	svc.client.mutex.Unlock()
-
 	return err
 }
 
@@ -202,8 +198,6 @@ func (svc *ConfigService) Delete(paths ...string) error {
 		})
 	}
 
-	svc.client.mutex.Lock()
 	_, err := svc.client.Request("configure", data)
-	svc.client.mutex.Unlock()
 	return err
 }
