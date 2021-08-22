@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -15,6 +16,8 @@ type Client struct {
 	url   string
 	key   string
 	resty *resty.Client
+
+	mutex *sync.Mutex
 
 	Config *ConfigService
 }
@@ -29,6 +32,7 @@ func NewWithClient(c *http.Client, url string, key string) *Client {
 		url,
 		key,
 		resty.NewWithClient(c),
+		&sync.Mutex{},
 
 		nil,
 	}
@@ -121,11 +125,14 @@ func (svc *ConfigService) Show(path string) (*string, error) {
 
 // Sets a configuration value at the specified path
 func (svc *ConfigService) Set(path string, value string) error {
+	svc.client.mutex.Lock()
 	_, err := svc.client.Request("configure", map[string]interface{}{
 		"op":    "set",
 		"path":  strings.Split(path, " "),
 		"value": value,
 	})
+	svc.client.mutex.Unlock()
+
 	return err
 }
 
@@ -178,7 +185,10 @@ func (svc *ConfigService) SetTree(tree map[string]interface{}) error {
 		})
 	}
 
+	svc.client.mutex.Lock()
 	_, err = svc.client.Request("configure", data)
+	svc.client.mutex.Unlock()
+
 	return err
 }
 
@@ -192,6 +202,8 @@ func (svc *ConfigService) Delete(paths ...string) error {
 		})
 	}
 
+	svc.client.mutex.Lock()
 	_, err := svc.client.Request("configure", data)
+	svc.client.mutex.Unlock()
 	return err
 }
