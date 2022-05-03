@@ -44,12 +44,12 @@ func NewWithClient(c *http.Client, url string, key string) *Client {
 
 type response struct {
 	Success bool
-	Data    interface{}
+	Data    any
 	Error   *string
 }
 
 // Posts a raw request with `payload` to `endpoint`.
-func (c *Client) Request(endpoint string, payload interface{}) (interface{}, error) {
+func (c *Client) Request(endpoint string, payload any) (any, error) {
 	data, err := json.Marshal(payload)
 	if err != nil {
 		return nil, errors.New("Failed to marshal request payload.")
@@ -82,8 +82,8 @@ func (c *Client) Request(endpoint string, payload interface{}) (interface{}, err
 }
 
 // Returns the full configuration tree at the specified path
-func (svc *ConfigService) ShowTree(path string) (map[string]interface{}, error) {
-	resp, err := svc.client.Request("retrieve", map[string]interface{}{
+func (svc *ConfigService) ShowTree(path string) (map[string]any, error) {
+	resp, err := svc.client.Request("retrieve", map[string]any{
 		"op":   "showConfig",
 		"path": strings.Split(path, " "),
 	})
@@ -96,7 +96,7 @@ func (svc *ConfigService) ShowTree(path string) (map[string]interface{}, error) 
 		}
 	}
 
-	obj, ok := resp.(map[string]interface{})
+	obj, ok := resp.(map[string]any)
 	if !ok {
 		return nil, errors.New("Received unexpected repsonse format from server.")
 	}
@@ -127,7 +127,7 @@ func (svc *ConfigService) Show(path string) (*string, error) {
 
 // Sets a configuration value at the specified path
 func (svc *ConfigService) Set(path string, value string) error {
-	_, err := svc.client.Request("configure", map[string]interface{}{
+	_, err := svc.client.Request("configure", map[string]any{
 		"op":    "set",
 		"path":  strings.Split(path, " "),
 		"value": value,
@@ -135,7 +135,7 @@ func (svc *ConfigService) Set(path string, value string) error {
 	return err
 }
 
-func _Flatten(data *map[string]string, path string, tree map[string]interface{}) error {
+func _Flatten(data *map[string]string, path string, tree map[string]any) error {
 	for k, v := range tree {
 		subpath := path
 		if len(subpath) > 0 {
@@ -144,7 +144,7 @@ func _Flatten(data *map[string]string, path string, tree map[string]interface{})
 		subpath += k
 
 		subval, ok := v.(string)
-		subtree, tok := v.(map[string]interface{})
+		subtree, tok := v.(map[string]any)
 
 		if ok {
 			(*data)[subpath] = subval
@@ -162,22 +162,22 @@ func _Flatten(data *map[string]string, path string, tree map[string]interface{})
 }
 
 // Flatten a multi level object into a flat list of keys and values
-func Flatten(tree map[string]interface{}) (map[string]string, error) {
+func Flatten(tree map[string]any) (map[string]string, error) {
 	res := map[string]string{}
 	err := _Flatten(&res, "", tree)
 	return res, err
 }
 
 // Sets all of the configuration keys and values in an object
-func (svc *ConfigService) SetTree(tree map[string]interface{}) error {
+func (svc *ConfigService) SetTree(tree map[string]any) error {
 	flat, err := Flatten(tree)
 	if err != nil {
 		return err
 	}
 
-	data := []map[string]interface{}{}
+	data := []map[string]any{}
 	for path, value := range flat {
-		data = append(data, map[string]interface{}{
+		data = append(data, map[string]any{
 			"op":    "set",
 			"path":  strings.Split(path, " "),
 			"value": value,
@@ -190,9 +190,9 @@ func (svc *ConfigService) SetTree(tree map[string]interface{}) error {
 
 // Deletes the configuration tree/values at the specified paths
 func (svc *ConfigService) Delete(paths ...string) error {
-	data := []map[string]interface{}{}
+	data := []map[string]any{}
 	for _, path := range paths {
-		data = append(data, map[string]interface{}{
+		data = append(data, map[string]any{
 			"op":   "delete",
 			"path": strings.Split(path, " "),
 		})
