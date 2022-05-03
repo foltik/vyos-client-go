@@ -135,36 +135,56 @@ func (svc *ConfigService) Set(path string, value string) error {
 	return err
 }
 
-func _Flatten(data *map[string]string, path string, tree map[string]any) error {
-	for k, v := range tree {
-		subpath := path
-		if len(subpath) > 0 {
-			subpath += " "
+func flatten(result *[][]string, value any, path string) error {
+	switch value.(type) {
+	case map[string]any:
+		tree := value.(map[string]any)
+
+		if len(tree) == 0 {
+			*result = append(*result, []string{path, ""})
 		}
-		subpath += k
 
-		subval, ok := v.(string)
-		subtree, tok := v.(map[string]any)
+		for k, v := range tree {
+			subpath := path
+			if len(subpath) > 0 {
+				subpath += " "
+			}
+			subpath += k
 
-		if ok {
-			(*data)[subpath] = subval
-		} else if tok {
-			err := _Flatten(data, subpath, subtree)
+			err := flatten(result, v, subpath)
 			if err != nil {
 				return err
 			}
-		} else {
-			return fmt.Errorf("%s: Invalid type", subpath)
 		}
+
+	case []string:
+		array := value.([]string)
+
+		if len(array) == 0 {
+			*result = append(*result, []string{path, ""})
+		}
+
+		for _, v := range array {
+			err := flatten(result, v, path)
+			if err != nil {
+				return err
+			}
+		}
+
+	case string:
+		*result = append(*result, []string{path, value.(string)})
+
+	default:
+		return fmt.Errorf("%s: Invalid type %T", path, value)
 	}
 
 	return nil
 }
 
-// Flatten a multi level object into a flat list of keys and values
-func Flatten(tree map[string]any) (map[string]string, error) {
-	res := map[string]string{}
-	err := _Flatten(&res, "", tree)
+// Flatten a multi level object into a flat list of {key, value} pairs
+func Flatten(tree map[string]any) ([][]string, error) {
+	res := [][]string{}
+	err := flatten(&res, tree, "")
 	return res, err
 }
 
@@ -176,7 +196,8 @@ func (svc *ConfigService) SetTree(tree map[string]any) error {
 	}
 
 	data := []map[string]any{}
-	for path, value := range flat {
+	for _, pair := range flat {
+		path, value := pair[0], pair[1]
 		data = append(data, map[string]any{
 			"op":    "set",
 			"path":  strings.Split(path, " "),
