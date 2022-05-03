@@ -1,5 +1,7 @@
 package client
 
+import "fmt"
+
 func flatten(result *[][]string, value any, path string) error {
 	switch value.(type) {
 	case map[string]any:
@@ -25,10 +27,6 @@ func flatten(result *[][]string, value any, path string) error {
 	case []string:
 		array := value.([]string)
 
-		if len(array) == 0 {
-			*result = append(*result, []string{path, ""})
-		}
-
 		for _, v := range array {
 			err := flatten(result, v, path)
 			if err != nil {
@@ -40,7 +38,7 @@ func flatten(result *[][]string, value any, path string) error {
 		*result = append(*result, []string{path, value.(string)})
 
 	default:
-		return fmt.Errorf("%s: Invalid type %T", path, value)
+		return fmt.Errorf("%s: invalid type %T", path, value)
 	}
 
 	return nil
