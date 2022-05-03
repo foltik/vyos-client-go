@@ -47,7 +47,7 @@ type response struct {
 	Error   *string
 }
 
-// Posts a raw request with `payload` to `endpoint`.
+// Post a raw request with `payload` to `endpoint`.
 func (c *Client) Request(endpoint string, payload any) (any, error) {
 	data, err := json.Marshal(payload)
 	if err != nil {
@@ -80,7 +80,7 @@ func (c *Client) Request(endpoint string, payload any) (any, error) {
 	return r.Data, err
 }
 
-// Returns the full configuration tree at the specified path
+// Return the full configuration tree at the specified path
 func (svc *ConfigService) ShowTree(path string) (map[string]any, error) {
 	resp, err := svc.client.Request("retrieve", map[string]any{
 		"op":   "showConfig",
@@ -103,7 +103,7 @@ func (svc *ConfigService) ShowTree(path string) (map[string]any, error) {
 	return obj, nil
 }
 
-// Returns the single configuration value at the speicfied path
+// Return the single configuration value at the speicfied path
 func (svc *ConfigService) Show(path string) (*string, error) {
 	obj, err := svc.ShowTree(path)
 	if err != nil {
@@ -124,7 +124,7 @@ func (svc *ConfigService) Show(path string) (*string, error) {
 	return &val, nil
 }
 
-// Saves the running configuration to the default startup configuration
+// Save the running configuration to the default startup configuration
 func (svc *ConfigService) Save() error {
 	_, err := svc.client.Request("config-file", map[string]any{
 		"op": "save",
@@ -132,7 +132,7 @@ func (svc *ConfigService) Save() error {
 	return err
 }
 
-// Saves the running configuration to the specified file
+// Save the running configuration to the specified file
 func (svc *ConfigService) SaveFile(file string) error {
 	_, err := svc.client.Request("config-file", map[string]any{
 		"op":   "save",
@@ -141,7 +141,7 @@ func (svc *ConfigService) SaveFile(file string) error {
 	return err
 }
 
-// Loads a configuration file
+// Load a configuration file
 func (svc *ConfigService) LoadFile(file string) error {
 	_, err := svc.client.Request("config-file", map[string]any{
 		"op":   "load",
@@ -150,7 +150,7 @@ func (svc *ConfigService) LoadFile(file string) error {
 	return err
 }
 
-// Sets a configuration value at the specified path
+// Set a configuration value at the specified path
 func (svc *ConfigService) Set(path string, value string) error {
 	_, err := svc.client.Request("configure", map[string]any{
 		"op":    "set",
@@ -160,7 +160,7 @@ func (svc *ConfigService) Set(path string, value string) error {
 	return err
 }
 
-// Deletes the configuration tree/values at the specified paths
+// Delete the configuration tree/values at the specified paths
 func (svc *ConfigService) Delete(paths ...string) error {
 	data := []map[string]any{}
 	for _, path := range paths {
@@ -174,7 +174,7 @@ func (svc *ConfigService) Delete(paths ...string) error {
 	return err
 }
 
-// Sets all of the configuration keys and values in an object
+// Set all of the configuration keys and values in an object
 func (svc *ConfigService) SetTree(tree map[string]any) error {
 	flat, err := Flatten(tree)
 	if err != nil {
@@ -195,7 +195,7 @@ func (svc *ConfigService) SetTree(tree map[string]any) error {
 	return err
 }
 
-// Deletes all of the configuration keys in an object
+// Delete all of the configuration keys in an object
 func (svc *ConfigService) DeleteTree(tree map[string]any) error {
 	flat, err := Flatten(tree)
 	if err != nil {
