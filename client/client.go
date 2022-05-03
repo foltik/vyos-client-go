@@ -124,6 +124,32 @@ func (svc *ConfigService) Show(path string) (*string, error) {
 	return &val, nil
 }
 
+// Saves the running configuration to the default startup configuration
+func (svc *ConfigService) Save() error {
+	_, err := svc.client.Request("config-file", map[string]any{
+		"op": "save",
+	})
+	return err
+}
+
+// Saves the running configuration to the specified file
+func (svc *ConfigService) SaveFile(file string) error {
+	_, err := svc.client.Request("config-file", map[string]any{
+		"op":   "save",
+		"file": file,
+	})
+	return err
+}
+
+// Loads a configuration file
+func (svc *ConfigService) LoadFile(file string) error {
+	_, err := svc.client.Request("config-file", map[string]any{
+		"op":   "load",
+		"file": file,
+	})
+	return err
+}
+
 // Sets a configuration value at the specified path
 func (svc *ConfigService) Set(path string, value string) error {
 	_, err := svc.client.Request("configure", map[string]any{
