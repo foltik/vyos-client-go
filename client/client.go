@@ -162,15 +162,15 @@ func (svc *ConfigService) Set(path string, value string) error {
 
 // Delete the configuration tree/values at the specified paths
 func (svc *ConfigService) Delete(paths ...string) error {
-	data := []map[string]any{}
+	payload := []map[string]any{}
 	for _, path := range paths {
-		data = append(data, map[string]any{
+		payload = append(payload, map[string]any{
 			"op":   "delete",
 			"path": strings.Split(path, " "),
 		})
 	}
 
-	_, err := svc.client.Request("configure", data)
+	_, err := svc.client.Request("configure", payload)
 	return err
 }
 
@@ -181,17 +181,17 @@ func (svc *ConfigService) SetTree(tree map[string]any) error {
 		return err
 	}
 
-	data := []map[string]any{}
+	payload := []map[string]any{}
 	for _, pair := range flat {
 		path, value := pair[0], pair[1]
-		data = append(data, map[string]any{
+		payload = append(payload, map[string]any{
 			"op":    "set",
 			"path":  strings.Split(path, " "),
 			"value": value,
 		})
 	}
 
-	_, err = svc.client.Request("configure", data)
+	_, err = svc.client.Request("configure", payload)
 	return err
 }
 
@@ -202,7 +202,7 @@ func (svc *ConfigService) DeleteTree(tree map[string]any) error {
 		return err
 	}
 
-	data := []map[string]any{}
+	payload := []map[string]any{}
 	for _, pair := range flat {
 		path, value := pair[0], pair[1]
 
@@ -211,12 +211,12 @@ func (svc *ConfigService) DeleteTree(tree map[string]any) error {
 			target += " " + value
 		}
 
-		data = append(data, map[string]any{
+		payload = append(payload, map[string]any{
 			"op":   "delete",
 			"path": strings.Split(target, " "),
 		})
 	}
 
-	_, err = svc.client.Request("configure", data)
+	_, err = svc.client.Request("configure", payload)
 	return err
 }
