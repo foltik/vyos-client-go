@@ -135,6 +135,20 @@ func (svc *ConfigService) Set(path string, value string) error {
 	return err
 }
 
+// Deletes the configuration tree/values at the specified paths
+func (svc *ConfigService) Delete(paths ...string) error {
+	data := []map[string]any{}
+	for _, path := range paths {
+		data = append(data, map[string]any{
+			"op":   "delete",
+			"path": strings.Split(path, " "),
+		})
+	}
+
+	_, err := svc.client.Request("configure", data)
+	return err
+}
+
 func flatten(result *[][]string, value any, path string) error {
 	switch value.(type) {
 	case map[string]any:
@@ -209,16 +223,28 @@ func (svc *ConfigService) SetTree(tree map[string]any) error {
 	return err
 }
 
-// Deletes the configuration tree/values at the specified paths
-func (svc *ConfigService) Delete(paths ...string) error {
+// Deletes all of the configuration keys in an object
+func (svc *ConfigService) DeleteTree(tree map[string]any) error {
+	flat, err := Flatten(tree)
+	if err != nil {
+		return err
+	}
+
 	data := []map[string]any{}
-	for _, path := range paths {
+	for _, pair := range flat {
+		path, value := pair[0], pair[1]
+
+		target := path
+		if value != "" {
+			target += " " + value
+		}
+
 		data = append(data, map[string]any{
 			"op":   "delete",
-			"path": strings.Split(path, " "),
+			"path": strings.Split(target, " "),
 		})
 	}
 
-	_, err := svc.client.Request("configure", data)
+	_, err = svc.client.Request("configure", data)
 	return err
 }
