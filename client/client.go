@@ -83,7 +83,7 @@ func (c *Client) Request(ctx context.Context, endpoint string, payload any) (any
 }
 
 // Return the full configuration tree at the specified path
-func (svc *ConfigService) ShowTreeWithContext(ctx context.Context, path string) (map[string]any, error) {
+func (svc *ConfigService) ShowTree(ctx context.Context, path string) (map[string]any, error) {
 	resp, err := svc.client.Request(ctx, "retrieve", map[string]any{
 		"op":   "showConfig",
 		"path": strings.Split(path, " "),
@@ -105,14 +105,9 @@ func (svc *ConfigService) ShowTreeWithContext(ctx context.Context, path string) 
 	return obj, nil
 }
 
-// Set all of the configuration keys and values in an object
-func (svc *ConfigService) ShowTree(path string) (map[string]any, error) {
-	return svc.ShowTreeWithContext(context.Background(), path)
-}
-
 // Return the single configuration value at the speicfied path
-func (svc *ConfigService) ShowWithContext(ctx context.Context, path string) (*string, error) {
-	obj, err := svc.ShowTreeWithContext(ctx, path)
+func (svc *ConfigService) Show(ctx context.Context, path string) (*string, error) {
+	obj, err := svc.ShowTree(ctx, path)
 	if err != nil {
 		return nil, err
 	}
@@ -131,24 +126,16 @@ func (svc *ConfigService) ShowWithContext(ctx context.Context, path string) (*st
 	return &val, nil
 }
 
-func (svc *ConfigService) Show(path string) (*string, error) {
-	return svc.ShowWithContext(context.Background(), path)
-}
-
 // Save the running configuration to the default startup configuration
-func (svc *ConfigService) SaveWithContext(ctx context.Context) error {
+func (svc *ConfigService) Save(ctx context.Context) error {
 	_, err := svc.client.Request(ctx, "config-file", map[string]any{
 		"op": "save",
 	})
 	return err
 }
 
-func (svc *ConfigService) Save() error {
-	return svc.SaveWithContext(context.Background())
-}
-
 // Save the running configuration to the specified file
-func (svc *ConfigService) SaveFileWithContext(ctx context.Context, file string) error {
+func (svc *ConfigService) SaveFile(ctx context.Context, file string) error {
 	_, err := svc.client.Request(ctx, "config-file", map[string]any{
 		"op":   "save",
 		"file": file,
@@ -156,12 +143,8 @@ func (svc *ConfigService) SaveFileWithContext(ctx context.Context, file string) 
 	return err
 }
 
-func (svc *ConfigService) SaveFile(file string) error {
-	return svc.SaveFileWithContext(context.Background(), file)
-}
-
 // Load a configuration file
-func (svc *ConfigService) LoadFileWithContext(ctx context.Context, file string) error {
+func (svc *ConfigService) LoadFile(ctx context.Context, file string) error {
 	_, err := svc.client.Request(ctx, "config-file", map[string]any{
 		"op":   "load",
 		"file": file,
@@ -169,12 +152,8 @@ func (svc *ConfigService) LoadFileWithContext(ctx context.Context, file string) 
 	return err
 }
 
-func (svc *ConfigService) LoadFile(file string) error {
-	return svc.LoadFileWithContext(context.Background(), file)
-}
-
 // Set a configuration value at the specified path
-func (svc *ConfigService) SetWithContext(ctx context.Context, path string, value string) error {
+func (svc *ConfigService) Set(ctx context.Context, path string, value string) error {
 	_, err := svc.client.Request(ctx, "configure", map[string]any{
 		"op":    "set",
 		"path":  strings.Split(path, " "),
@@ -183,12 +162,8 @@ func (svc *ConfigService) SetWithContext(ctx context.Context, path string, value
 	return err
 }
 
-func (svc *ConfigService) Set(path string, value string) error {
-	return svc.SetWithContext(context.Background(), path, value)
-}
-
 // Delete the configuration tree/values at the specified paths
-func (svc *ConfigService) DeleteWithContext(ctx context.Context, paths ...string) error {
+func (svc *ConfigService) Delete(ctx context.Context, paths ...string) error {
 	payload := []map[string]any{}
 	for _, path := range paths {
 		payload = append(payload, map[string]any{
@@ -201,12 +176,8 @@ func (svc *ConfigService) DeleteWithContext(ctx context.Context, paths ...string
 	return err
 }
 
-func (svc *ConfigService) Delete(paths ...string) error {
-	return svc.DeleteWithContext(context.Background(), paths...)
-}
-
 // Set all of the configuration keys and values in an object
-func (svc *ConfigService) SetTreeWithContext(ctx context.Context, tree map[string]any) error {
+func (svc *ConfigService) SetTree(ctx context.Context, tree map[string]any) error {
 	flat, err := Flatten(tree)
 	if err != nil {
 		return err
@@ -226,13 +197,8 @@ func (svc *ConfigService) SetTreeWithContext(ctx context.Context, tree map[strin
 	return err
 }
 
-// Set all of the configuration keys and values in an object
-func (svc *ConfigService) SetTree(tree map[string]any) error {
-	return svc.SetTreeWithContext(context.Background(), tree)
-}
-
 // Delete all of the configuration keys in an object
-func (svc *ConfigService) DeleteTreeWithContext(ctx context.Context, tree map[string]any) error {
+func (svc *ConfigService) DeleteTree(ctx context.Context, tree map[string]any) error {
 	flat, err := Flatten(tree)
 	if err != nil {
 		return err
@@ -255,8 +221,4 @@ func (svc *ConfigService) DeleteTreeWithContext(ctx context.Context, tree map[st
 
 	_, err = svc.client.Request(ctx, "configure", payload)
 	return err
-}
-
-func (svc *ConfigService) DeleteTree(tree map[string]any) error {
-	return svc.DeleteTreeWithContext(context.Background(), tree)
 }
