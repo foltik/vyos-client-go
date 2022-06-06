@@ -121,7 +121,7 @@ func (svc *ConfigService) ShowTree(ctx context.Context, path string) (map[string
 	for _, component := range strings.Split(path, " ") {
 		obj, ok := val[component].(map[string]any)
 		if !ok {
-			return nil, errors.New("value missing from configuration tree returned by server")
+			return nil, nil
 		}
 		val = obj
 	}
