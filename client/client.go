@@ -21,7 +21,11 @@ type Client struct {
 
 	Config *ConfigService
 }
-type ConfigService struct{ client *Client }
+type ConfigService struct {
+	client        *Client
+	mutex         *sync.Mutex
+	showTreeCache *map[string]any
+}
 
 func New(url string, key string) *Client {
 	return NewWithClient(&http.Client{Timeout: 10 * time.Second}, url, key)
@@ -37,7 +41,11 @@ func NewWithClient(c *http.Client, url string, key string) *Client {
 		nil,
 	}
 
-	client.Config = &ConfigService{client}
+	client.Config = &ConfigService{
+		client,
+		&sync.Mutex{},
+		nil,
+	}
 
 	return client
 }
@@ -52,7 +60,7 @@ type response struct {
 func (c *Client) Request(ctx context.Context, endpoint string, payload any) (any, error) {
 	data, err := json.Marshal(payload)
 	if err != nil {
-		return nil, errors.New("Failed to marshal request payload.")
+		return nil, errors.New("failed to marshal request payload")
 	}
 
 	c.mutex.Lock()
@@ -63,7 +71,7 @@ func (c *Client) Request(ctx context.Context, endpoint string, payload any) (any
 			"data": string(data),
 		}).
 		Post(c.url + "/" + endpoint)
-    c.mutex.Unlock()
+	c.mutex.Unlock()
 	if err != nil {
 		return nil, err
 	}
@@ -84,30 +92,51 @@ func (c *Client) Request(ctx context.Context, endpoint string, payload any) (any
 
 // Return the full configuration tree at the specified path
 func (svc *ConfigService) ShowTree(ctx context.Context, path string) (map[string]any, error) {
-	resp, err := svc.client.Request(ctx, "retrieve", map[string]any{
-		"op":   "showConfig",
-		"path": strings.Split(path, " "),
-	})
-	if err != nil {
-		if strings.Contains(err.Error(), "specified path is empty") {
-			// If we get an empty path error, consume it and return nil
-			return nil, nil
-		} else {
-			return nil, err
+	svc.mutex.Lock()
+	if svc.showTreeCache == nil {
+		resp, err := svc.client.Request(ctx, "retrieve", map[string]any{
+			"op":   "showConfig",
+			"path": []string{},
+		})
+		if err != nil {
+			svc.mutex.Unlock()
+			if strings.Contains(err.Error(), "specified path is empty") {
+				// If we get an empty path error, consume it and return nil
+				return nil, nil
+			} else {
+				return nil, err
+			}
 		}
+
+		obj, ok := resp.(map[string]any)
+		if !ok {
+			svc.mutex.Unlock()
+			return nil, errors.New("received unexpected repsonse format from server")
+		}
+		svc.showTreeCache = &obj
+	}
+	svc.mutex.Unlock()
+
+	val := *svc.showTreeCache
+	for _, component := range strings.Split(path, " ") {
+		obj, ok := val[component].(map[string]any)
+		if !ok {
+			return nil, errors.New("value missing from configuration tree returned by server")
+		}
+		val = obj
 	}
 
-	obj, ok := resp.(map[string]any)
-	if !ok {
-		return nil, errors.New("Received unexpected repsonse format from server.")
-	}
-
-	return obj, nil
+	return val, nil
 }
 
 // Return the single configuration value at the speicfied path
 func (svc *ConfigService) Show(ctx context.Context, path string) (*string, error) {
-	obj, err := svc.ShowTree(ctx, path)
+
+	lastInd := strings.LastIndex(path, " ")
+	parent := path[:lastInd]
+	child := path[lastInd+1:]
+
+	obj, err := svc.ShowTree(ctx, parent)
 	if err != nil {
 		return nil, err
 	}
@@ -115,12 +144,9 @@ func (svc *ConfigService) Show(ctx context.Context, path string) (*string, error
 		return nil, nil
 	}
 
-	components := strings.Split(path, " ")
-	terminal := components[len(components)-1]
-
-	val, ok := obj[terminal].(string)
+	val, ok := obj[child].(string)
 	if !ok {
-		return nil, errors.New("Value missing from configuration tree returned by server.")
+		return nil, errors.New("value missing from configuration tree returned by server")
 	}
 
 	return &val, nil
@@ -183,6 +209,11 @@ func (svc *ConfigService) SetTree(ctx context.Context, tree map[string]any) erro
 		return err
 	}
 
+	return svc.SetFlat(ctx, flat)
+}
+
+// Set all of the configuration in a flat list of {key, value} pairs
+func (svc *ConfigService) SetFlat(ctx context.Context, flat [][]string) error {
 	payload := []map[string]any{}
 	for _, pair := range flat {
 		path, value := pair[0], pair[1]
@@ -193,7 +224,7 @@ func (svc *ConfigService) SetTree(ctx context.Context, tree map[string]any) erro
 		})
 	}
 
-	_, err = svc.client.Request(ctx, "configure", payload)
+	_, err := svc.client.Request(ctx, "configure", payload)
 	return err
 }
 
@@ -204,6 +235,11 @@ func (svc *ConfigService) DeleteTree(ctx context.Context, tree map[string]any) e
 		return err
 	}
 
+	return svc.DeleteFlat(ctx, flat)
+}
+
+// Delete all of the configuration in a flat list of {key, value} pairs
+func (svc *ConfigService) DeleteFlat(ctx context.Context, flat [][]string) error {
 	payload := []map[string]any{}
 	for _, pair := range flat {
 		path, value := pair[0], pair[1]
@@ -219,6 +255,6 @@ func (svc *ConfigService) DeleteTree(ctx context.Context, tree map[string]any) e
 		})
 	}
 
-	_, err = svc.client.Request(ctx, "configure", payload)
+	_, err := svc.client.Request(ctx, "configure", payload)
 	return err
 }
