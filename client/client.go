@@ -91,7 +91,7 @@ func (c *Client) Request(ctx context.Context, endpoint string, payload any) (any
 }
 
 // Return the full configuration tree at the specified path
-func (svc *ConfigService) ShowTree(ctx context.Context, path string) (map[string]any, error) {
+func (svc *ConfigService) ShowAny(ctx context.Context, path string) (any, error) {
 	svc.mutex.Lock()
 	if svc.showTreeCache == nil {
 		resp, err := svc.client.Request(ctx, "retrieve", map[string]any{
@@ -117,9 +117,9 @@ func (svc *ConfigService) ShowTree(ctx context.Context, path string) (map[string
 	}
 	svc.mutex.Unlock()
 
-	val := *svc.showTreeCache
+	var val any = *svc.showTreeCache
 	for _, component := range strings.Split(path, " ") {
-		obj, ok := val[component].(map[string]any)
+		obj, ok := val.(map[string]any)[component]
 		if !ok {
 			return nil, nil
 		}
@@ -129,14 +129,25 @@ func (svc *ConfigService) ShowTree(ctx context.Context, path string) (map[string
 	return val, nil
 }
 
+func (svc *ConfigService) ShowTree(ctx context.Context, path string) (map[string]any, error) {
+
+	obj, err := svc.ShowAny(ctx, path)
+	if err != nil {
+		return nil, err
+	}
+
+	result, ok := obj.(map[string]any)
+	if !ok {
+		return nil, errors.New("Path '" + path + "' exists but it is not a tree")
+	}
+
+	return result, nil
+}
+
 // Return the single configuration value at the speicfied path
 func (svc *ConfigService) Show(ctx context.Context, path string) (*string, error) {
 
-	lastInd := strings.LastIndex(path, " ")
-	parent := path[:lastInd]
-	child := path[lastInd+1:]
-
-	obj, err := svc.ShowTree(ctx, parent)
+	obj, err := svc.ShowAny(ctx, path)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +155,7 @@ func (svc *ConfigService) Show(ctx context.Context, path string) (*string, error
 		return nil, nil
 	}
 
-	val, ok := obj[child].(string)
+	val, ok := obj.(string)
 	if !ok {
 		return nil, errors.New("value missing from configuration tree returned by server")
 	}
