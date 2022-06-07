@@ -135,6 +135,9 @@ func (svc *ConfigService) ShowTree(ctx context.Context, path string) (map[string
 	if err != nil {
 		return nil, err
 	}
+	if obj == nil {
+		return nil, nil
+	}
 
 	result, ok := obj.(map[string]any)
 	if !ok {
