@@ -75,7 +75,7 @@ func flatten(result *[][]string, value any, path string) error {
 }
 
 // Flatten a multi level object into a flat list of {key, value} pairs
-func Flatten(tree map[string]any) ([][]string, error) {
+func Flatten(tree any) ([][]string, error) {
 	res := [][]string{}
 	err := flatten(&res, tree, "")
 	return res, err

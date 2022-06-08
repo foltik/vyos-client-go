@@ -52,7 +52,7 @@ type response struct {
 func (c *Client) Request(ctx context.Context, endpoint string, payload any) (any, error) {
 	data, err := json.Marshal(payload)
 	if err != nil {
-		return nil, errors.New("Failed to marshal request payload.")
+		return nil, errors.New("failed to marshal request payload")
 	}
 
 	c.mutex.Lock()
@@ -63,7 +63,7 @@ func (c *Client) Request(ctx context.Context, endpoint string, payload any) (any
 			"data": string(data),
 		}).
 		Post(c.url + "/" + endpoint)
-    c.mutex.Unlock()
+	c.mutex.Unlock()
 	if err != nil {
 		return nil, err
 	}
@@ -83,10 +83,13 @@ func (c *Client) Request(ctx context.Context, endpoint string, payload any) (any
 }
 
 // Return the full configuration tree at the specified path
-func (svc *ConfigService) ShowTree(ctx context.Context, path string) (map[string]any, error) {
+func (svc *ConfigService) Show(ctx context.Context, path string) (any, error) {
+	components := strings.Split(path, " ")
+	terminal := components[len(components)-1]
+
 	resp, err := svc.client.Request(ctx, "retrieve", map[string]any{
 		"op":   "showConfig",
-		"path": strings.Split(path, " "),
+		"path": components,
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), "specified path is empty") {
@@ -99,31 +102,60 @@ func (svc *ConfigService) ShowTree(ctx context.Context, path string) (map[string
 
 	obj, ok := resp.(map[string]any)
 	if !ok {
-		return nil, errors.New("Received unexpected repsonse format from server.")
+		return nil, errors.New("received unexpected repsonse format from server")
 	}
 
-	return obj, nil
+	val, ok := obj[terminal]
+	if ok {
+		return val, nil
+	} else {
+		return obj, nil
+	}
 }
 
-// Return the single configuration value at the speicfied path
-func (svc *ConfigService) Show(ctx context.Context, path string) (*string, error) {
-	obj, err := svc.ShowTree(ctx, path)
+// Set the configuration at the specified path.
+//
+// If `value` is a string it will be directly set. For lists maps, and any
+// nesting of those types, each individual value will be set in a batch.
+func (svc *ConfigService) Set(ctx context.Context, path string, value any) error {
+	flat, err := Flatten(value)
 	if err != nil {
-		return nil, err
-	}
-	if obj == nil {
-		return nil, nil
+		return err
 	}
 
-	components := strings.Split(path, " ")
-	terminal := components[len(components)-1]
+	payload := []map[string]any{}
+	for _, pair := range flat {
+		subpath, value := pair[0], pair[1]
 
-	val, ok := obj[terminal].(string)
-	if !ok {
-		return nil, errors.New("Value missing from configuration tree returned by server.")
+		prefixpath := path
+		if len(prefixpath) > 0 && len(subpath) > 0 {
+			prefixpath += " "
+		}
+		prefixpath += subpath
+
+		payload = append(payload, map[string]any{
+			"op":    "set",
+			"path":  strings.Split(prefixpath, " "),
+			"value": value,
+		})
 	}
 
-	return &val, nil
+	_, err = svc.client.Request(ctx, "configure", payload)
+	return err
+}
+
+// Delete the configuration at the specified paths.
+func (svc *ConfigService) Delete(ctx context.Context, paths ...string) error {
+	payload := []map[string]any{}
+	for _, path := range paths {
+		payload = append(payload, map[string]any{
+			"op":   "delete",
+			"path": strings.Split(path, " "),
+		})
+	}
+
+	_, err := svc.client.Request(ctx, "configure", payload)
+	return err
 }
 
 // Save the running configuration to the default startup configuration
@@ -149,76 +181,5 @@ func (svc *ConfigService) LoadFile(ctx context.Context, file string) error {
 		"op":   "load",
 		"file": file,
 	})
-	return err
-}
-
-// Set a configuration value at the specified path
-func (svc *ConfigService) Set(ctx context.Context, path string, value string) error {
-	_, err := svc.client.Request(ctx, "configure", map[string]any{
-		"op":    "set",
-		"path":  strings.Split(path, " "),
-		"value": value,
-	})
-	return err
-}
-
-// Delete the configuration tree/values at the specified paths
-func (svc *ConfigService) Delete(ctx context.Context, paths ...string) error {
-	payload := []map[string]any{}
-	for _, path := range paths {
-		payload = append(payload, map[string]any{
-			"op":   "delete",
-			"path": strings.Split(path, " "),
-		})
-	}
-
-	_, err := svc.client.Request(ctx, "configure", payload)
-	return err
-}
-
-// Set all of the configuration keys and values in an object
-func (svc *ConfigService) SetTree(ctx context.Context, tree map[string]any) error {
-	flat, err := Flatten(tree)
-	if err != nil {
-		return err
-	}
-
-	payload := []map[string]any{}
-	for _, pair := range flat {
-		path, value := pair[0], pair[1]
-		payload = append(payload, map[string]any{
-			"op":    "set",
-			"path":  strings.Split(path, " "),
-			"value": value,
-		})
-	}
-
-	_, err = svc.client.Request(ctx, "configure", payload)
-	return err
-}
-
-// Delete all of the configuration keys in an object
-func (svc *ConfigService) DeleteTree(ctx context.Context, tree map[string]any) error {
-	flat, err := Flatten(tree)
-	if err != nil {
-		return err
-	}
-
-	payload := []map[string]any{}
-	for _, pair := range flat {
-		path, value := pair[0], pair[1]
-
-		target := path
-		if value != "" {
-			target += " " + value
-		}
-
-		payload = append(payload, map[string]any{
-			"op":   "delete",
-			"path": strings.Split(target, " "),
-		})
-	}
-
-	_, err = svc.client.Request(ctx, "configure", payload)
 	return err
 }
