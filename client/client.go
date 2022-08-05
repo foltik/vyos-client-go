@@ -144,14 +144,42 @@ func (svc *ConfigService) Set(ctx context.Context, path string, value any) error
 	return err
 }
 
-// Delete the configuration at the specified paths.
-func (svc *ConfigService) Delete(ctx context.Context, paths ...string) error {
+// Delete values at the specified path.
+//
+// If `value` is nil or zero length the whole `path` will be deleted.
+// If `value` is a string it will be directly deleted. For lists maps, and any
+// nesting of those types, each individual value will be deleted in a batch.
+func (svc *ConfigService) Delete(ctx context.Context, path string, value ...any) error {
 	payload := []map[string]any{}
-	for _, path := range paths {
+
+	if value == nil || len(value) == 0 {
+
 		payload = append(payload, map[string]any{
 			"op":   "delete",
-			"path": strings.Split(path, " "),
+			"path": path,
 		})
+	} else {
+
+		flat, err := Flatten(value)
+		if err != nil {
+			return err
+		}
+
+		for _, pair := range flat {
+			subpath, value := pair[0], pair[1]
+
+			prefixpath := path
+			if len(prefixpath) > 0 && len(subpath) > 0 {
+				prefixpath += " "
+			}
+			prefixpath += subpath
+
+			payload = append(payload, map[string]any{
+				"op":    "delete",
+				"path":  strings.Split(prefixpath, " "),
+				"value": value,
+			})
+		}
 	}
 
 	_, err := svc.client.Request(ctx, "configure", payload)
