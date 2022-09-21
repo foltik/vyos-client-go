@@ -156,7 +156,7 @@ func (svc *ConfigService) Delete(ctx context.Context, path string, value ...any)
 
 		payload = append(payload, map[string]any{
 			"op":   "delete",
-			"path": path,
+			"path": strings.Split(path, " "),
 		})
 	} else {
 
