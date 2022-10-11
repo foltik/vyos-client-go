@@ -23,7 +23,7 @@ func checkFlattenError(t *testing.T, tree map[string]any, substr string) {
 	}
 }
 
-func TestFlatten_String(t *testing.T) {
+func TestUnit_Flatten_String(t *testing.T) {
 	checkFlattenResult(t,
 		map[string]any{
 			"foo": "bar",
@@ -34,7 +34,7 @@ func TestFlatten_String(t *testing.T) {
 	)
 }
 
-func TestFlatten_Map(t *testing.T) {
+func TestUnit_Flatten_Map(t *testing.T) {
 	checkFlattenResult(t,
 		map[string]any{
 			"foo": map[string]any{
@@ -46,21 +46,19 @@ func TestFlatten_Map(t *testing.T) {
 		},
 	)
 }
-func TestFlatten_MapString(t *testing.T) {
+func TestUnit_Flatten_MapString(t *testing.T) {
 	checkFlattenResult(t,
 		map[string]any{
 			"foo": map[string]string{
 				"bar": "baz",
-                "qux": "quo",
 			},
 		},
 		[][]string{
 			{"foo bar", "baz"},
-			{"foo qux", "quo"},
 		},
 	)
 }
-func TestFlatten_MapNesting(t *testing.T) {
+func TestUnit_Flatten_MapNesting(t *testing.T) {
 	checkFlattenResult(t,
 		map[string]any{
 			"foo": map[string]any{
@@ -76,7 +74,7 @@ func TestFlatten_MapNesting(t *testing.T) {
 		},
 	)
 }
-func TestFlatten_MapEmpty(t *testing.T) {
+func TestUnit_Flatten_MapEmpty(t *testing.T) {
 	checkFlattenResult(t,
 		map[string]any{
 			"foo": map[string]any{},
@@ -86,7 +84,7 @@ func TestFlatten_MapEmpty(t *testing.T) {
 		},
 	)
 }
-func TestFlatten_MapErrorWithAny(t *testing.T) {
+func TestUnit_Flatten_MapErrorWithAny(t *testing.T) {
 	checkFlattenError(t,
 		map[string]any{
 			"foo": map[any]any{},
@@ -95,7 +93,7 @@ func TestFlatten_MapErrorWithAny(t *testing.T) {
 	)
 }
 
-func TestFlatten_Array(t *testing.T) {
+func TestUnit_Flatten_Array(t *testing.T) {
 	checkFlattenResult(t,
 		map[string]any{
 			"test": []string{
@@ -111,7 +109,7 @@ func TestFlatten_Array(t *testing.T) {
 		},
 	)
 }
-func TestFlatten_ArrayMixed(t *testing.T) {
+func TestUnit_Flatten_ArrayMixed(t *testing.T) {
 	checkFlattenResult(t,
 		map[string]any{
 			"test": []any{
@@ -127,7 +125,7 @@ func TestFlatten_ArrayMixed(t *testing.T) {
 		},
 	)
 }
-func TestFlatten_ArrayEmpty(t *testing.T) {
+func TestUnit_Flatten_ArrayEmpty(t *testing.T) {
 	checkFlattenResult(t,
 		map[string]any{
 			"foo": []string{},

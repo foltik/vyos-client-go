@@ -82,14 +82,19 @@ func (c *Client) Request(ctx context.Context, endpoint string, payload any) (any
 	return r.Data, err
 }
 
-// Return the full configuration tree at the specified path
+// Return the configuration tree at the specified path
 func (svc *ConfigService) Show(ctx context.Context, path string) (any, error) {
 	components := strings.Split(path, " ")
 	terminal := components[len(components)-1]
 
+	path_components := components
+	if path == "" {
+		path_components = []string{}
+	}
+
 	resp, err := svc.client.Request(ctx, "retrieve", map[string]any{
 		"op":   "showConfig",
-		"path": components,
+		"path": path_components,
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), "specified path is empty") {
