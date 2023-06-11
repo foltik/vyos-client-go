@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"sync"
@@ -58,6 +59,7 @@ func (c *Client) Request(ctx context.Context, endpoint string, payload any) (any
 		return nil, errors.New("failed to marshal request payload")
 	}
 
+	url := c.url + "/" + endpoint
 	c.mutex.Lock()
 	resp, err := c.resty.R().
 		SetContext(ctx).
@@ -65,14 +67,25 @@ func (c *Client) Request(ctx context.Context, endpoint string, payload any) (any
 			"key":  c.key,
 			"data": string(data),
 		}).
-		Post(c.url + "/" + endpoint)
+		Post(url)
 	c.mutex.Unlock()
 	if err != nil {
 		return nil, err
 	}
 
+	statusCode := resp.StatusCode()
+	body := resp.Body()
+	if statusCode < 200 || statusCode >= 300 {
+		return nil, fmt.Errorf(
+			"received non-successful (%d) response from vyos api (%s).\n%s",
+			statusCode,
+			url,
+			body,
+		)
+	}
+
 	r := new(response)
-	err = json.Unmarshal(resp.Body(), &r)
+	err = json.Unmarshal(body, &r)
 	if err != nil {
 		return nil, err
 	}
