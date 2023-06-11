@@ -19,7 +19,8 @@ type Client struct {
 
 	mutex *sync.Mutex
 
-	Config *ConfigService
+	Config          *ConfigService
+	ContainerImages *ContainerImageService
 }
 type ConfigService struct{ client *Client }
 
@@ -35,9 +36,11 @@ func NewWithClient(c *http.Client, url string, key string) *Client {
 		&sync.Mutex{},
 
 		nil,
+		nil,
 	}
 
 	client.Config = &ConfigService{client}
+	client.ContainerImages = &ContainerImageService{client}
 
 	return client
 }
