@@ -7,7 +7,7 @@ import (
 )
 
 func TestUnit_ParseImages(t *testing.T) {
-	images, err := parseImages("REPOSITORY                   TAG         IMAGE ID      CREATED       SIZE\ndocker.io/library/alpine     3.18.0      5e2b554c1c45  4 weeks ago   7.62 MB\n")
+	images, err := parseImages("sudo: unable to resolve host 62b1b7ccea6c: System error\nREPOSITORY                   TAG         IMAGE ID      CREATED       SIZE\ndocker.io/library/alpine     3.18.0      5e2b554c1c45  4 weeks ago   7.62 MB\n")
 	assert.NoError(t, err, "expected no error parsing images")
 	assert.Len(t, images, 1, "expected exactly 1 container image")
 	assert.Equal(t, "docker.io/library/alpine", images[0].Name, "image name must be equal")

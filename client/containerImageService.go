@@ -57,6 +57,7 @@ func (svc *ContainerImageService) Show(ctx context.Context) ([]ContainerImage, e
 	return parseImages(data)
 }
 
+var imageHeaderPattern = regexp.MustCompile(`^REPOSITORY\s{2,}TAG\s{2,}IMAGE ID\s{2,}.*$`)
 var imageLinePattern = regexp.MustCompile(`^(?P<name>[^\s]+)\s{2,}(?P<tag>[^\s]+)\s{2,}(?P<imageId>[^\s]+)`)
 
 func parseImages(data string) ([]ContainerImage, error) {
@@ -64,16 +65,17 @@ func parseImages(data string) ([]ContainerImage, error) {
 		return []ContainerImage{}, nil
 	}
 	lines := strings.Split(strings.TrimSpace(data), "\n")
-	match, _ := regexp.MatchString("REPOSITORY\\s{2,}TAG\\s{2,}IMAGE ID\\s{2,}", lines[0])
-	if !match {
-		return nil, fmt.Errorf("container image response header (%s) does not match expected format", lines[0])
-	}
 
 	images := []ContainerImage{}
 	j := len(lines)
-	for i := 1; i < j; i++ {
+	foundHeader := false
+	for i := 0; i < j; i++ {
 		line := strings.TrimSpace(lines[i])
 		if line == "" {
+			continue
+		}
+		if !foundHeader {
+			foundHeader = imageHeaderPattern.MatchString(line)
 			continue
 		}
 		match := reSubMatchMap(imageLinePattern, line)
@@ -82,6 +84,10 @@ func parseImages(data string) ([]ContainerImage, error) {
 			Tag:     match["tag"],
 			ImageID: match["imageId"],
 		})
+	}
+
+	if !foundHeader {
+		return nil, fmt.Errorf("could not find expected container image header in response from vyos api:\n%s", data)
 	}
 	return images, nil
 }
