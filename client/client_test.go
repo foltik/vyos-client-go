@@ -120,12 +120,12 @@ func TestIntegration_Config_ShowRoot(t *testing.T) {
 
 func TestIntegration_Config_SetValue(t *testing.T) {
 	client, ctx := make_client(t)
-	err := client.Config.Set(ctx, "system ntp listen-address", "1.2.3.4")
+	err := client.Config.Set(ctx, "service ntp listen-address", "1.2.3.4")
 	if err != nil {
 		t.Error(err)
 	}
 
-	resp, err := client.Config.Show(ctx, "system ntp listen-address")
+	resp, err := client.Config.Show(ctx, "service ntp listen-address")
 	if err != nil {
 		t.Error(err)
 	}
@@ -139,7 +139,7 @@ func TestIntegration_Config_SetValue(t *testing.T) {
 		t.Errorf("expected '1.2.3.4', got '%s'", hostname)
 	}
 
-	err = client.Config.Delete(ctx, "system ntp listen-address")
+	err = client.Config.Delete(ctx, "service ntp listen-address")
 	if err != nil {
 		t.Error(err)
 	}
