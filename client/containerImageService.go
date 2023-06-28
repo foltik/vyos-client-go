@@ -21,11 +21,7 @@ func (svc *ContainerImageService) Add(ctx context.Context, image string) error {
 		"op":   "add",
 		"name": image,
 	})
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 // Delete container image
@@ -34,11 +30,7 @@ func (svc *ContainerImageService) Delete(ctx context.Context, image string) erro
 		"op":   "delete",
 		"name": image,
 	})
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 // Return the list of container images
@@ -54,6 +46,7 @@ func (svc *ContainerImageService) Show(ctx context.Context) ([]ContainerImage, e
 	if !ok {
 		return nil, errors.New("received unexpected repsonse format from server")
 	}
+
 	return parseImages(data)
 }
 
@@ -61,24 +54,30 @@ var imageHeaderPattern = regexp.MustCompile(`^REPOSITORY\s{2,}TAG\s{2,}IMAGE ID\
 var imageLinePattern = regexp.MustCompile(`^(?P<name>[^\s]+)\s{2,}(?P<tag>[^\s]+)\s{2,}(?P<imageId>[^\s]+)`)
 
 func parseImages(data string) ([]ContainerImage, error) {
+	data = strings.TrimSpace(data)
 	if data == "" {
 		return []ContainerImage{}, nil
 	}
-	lines := strings.Split(strings.TrimSpace(data), "\n")
 
 	images := []ContainerImage{}
-	j := len(lines)
+
 	foundHeader := false
-	for i := 0; i < j; i++ {
-		line := strings.TrimSpace(lines[i])
+	for _, line := range strings.Split(data, "\n") {
+		line = strings.TrimSpace(line)
 		if line == "" {
 			continue
 		}
+
 		if !foundHeader {
 			foundHeader = imageHeaderPattern.MatchString(line)
 			continue
 		}
-		match := reSubMatchMap(imageLinePattern, line)
+
+		match, ok := matchStringNamed(imageLinePattern, line)
+		if !ok {
+			return nil, fmt.Errorf("invalid image in response from vyos api:\n%s", line)
+		}
+
 		images = append(images, ContainerImage{
 			Name:    match["name"],
 			Tag:     match["tag"],
@@ -92,14 +91,15 @@ func parseImages(data string) ([]ContainerImage, error) {
 	return images, nil
 }
 
-func reSubMatchMap(r *regexp.Regexp, str string) map[string]string {
+func matchStringNamed(r *regexp.Regexp, str string) (map[string]string, bool) {
 	match := r.FindStringSubmatch(str)
-	subMatchMap := make(map[string]string)
-	for i, name := range r.SubexpNames() {
-		if i != 0 {
-			subMatchMap[name] = match[i]
-		}
+	if match == nil || len(match) != len(r.SubexpNames()) {
+		return nil, false
 	}
 
-	return subMatchMap
+	matches := map[string]string{}
+	for i, name := range r.SubexpNames()[1:] {
+		matches[name] = match[i+1]
+	}
+	return matches, true
 }
