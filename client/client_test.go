@@ -1,6 +1,7 @@
 package client
 
 import (
+	"fmt"
 	"testing"
 
 	"context"
@@ -9,6 +10,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func make_client(t *testing.T) (*Client, context.Context) {
@@ -26,7 +29,7 @@ func make_client(t *testing.T) (*Client, context.Context) {
 		},
 	}
 	http := &http.Client{
-		Timeout: 10 * time.Second,
+		Timeout:   10 * time.Second,
 		Transport: tr,
 	}
 
@@ -117,7 +120,6 @@ func TestIntegration_Config_ShowRoot(t *testing.T) {
 	}
 }
 
-
 func TestIntegration_Config_SetValue(t *testing.T) {
 	client, ctx := make_client(t)
 	err := client.Config.Set(ctx, "service ntp listen-address", "1.2.3.4")
@@ -150,7 +152,7 @@ func TestIntegration_Config_SetMap(t *testing.T) {
 
 	payload := map[string]any{
 		"reboot-on-panic": "",
-		"startup-beep": "",
+		"startup-beep":    "",
 	}
 	err := client.Config.Set(ctx, "system option", payload)
 	if err != nil {
@@ -270,4 +272,20 @@ func TestIntegration_Config_Delete(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+}
+
+func TestIntegration_HandleNonSuccess(t *testing.T) {
+	client, ctx := make_client(t)
+
+	_, err := client.Request(ctx, "foo", map[string]any{
+		"op": "foo",
+	})
+	assert.ErrorContains(
+		t,
+		err,
+		fmt.Sprintf(
+			"received non-successful (404) response from vyos api (%s/foo)",
+			client.url,
+		),
+	)
 }
